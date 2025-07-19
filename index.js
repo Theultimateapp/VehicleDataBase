@@ -1,96 +1,100 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Bar } from "react-chartjs-2";
-import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Legend, Tooltip } from "chart.js";
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-ChartJS.register(BarElement, CategoryScale, LinearScale, Legend, Tooltip);
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
 
-export default function FitmentDashboard() {
+const SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vT4V58dzbn1kgSkIEvTyMf-YBzRzrSnYN2Yx3Qxx5z9MJff1hStXeEDxZQBDsQWmu8g_zKICtUPNWef/pub?gid=0&single=true&output=csv";
+
+export default function Home() {
   const [data, setData] = useState([]);
-  const [makeFilter, setMakeFilter] = useState("All");
+  const [make, setMake] = useState("All");
 
   useEffect(() => {
-    fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vSAMPLE1234567890/pub?output=csv")
+    fetch(SHEET_CSV_URL)
       .then((res) => res.text())
-      .then((csv) => {
-        const [headerLine, ...lines] = csv.trim().split("\n");
-        const headers = headerLine.split(",");
-        const parsedData = lines.map(line => {
+      .then((text) => {
+        const [headersLine, ...lines] = text.trim().split("\n");
+        const headers = headersLine.split(",").map(h => h.trim());
+        const parsed = lines.map(line => {
           const values = line.split(",");
           const row = {};
-          headers.forEach((h, i) => row[h.trim()] = values[i]?.trim());
+          headers.forEach((h, i) => (row[h] = values[i] || ""));
           return row;
         });
-        setData(parsedData);
+        setData(parsed);
       });
   }, []);
 
-  const makes = [...new Set(data.map((row) => row.make))].sort();
-  const filteredData = makeFilter === "All" ? data : data.filter(row => row.make === makeFilter);
+  const filtered = make === "All" ? data : data.filter(r => r.make === make);
+  const makes = [...new Set(data.map(r => r.make).filter(Boolean))].sort();
 
-  const makeCounts = {};
-  filteredData.forEach(row => {
-    const make = row.make;
-    makeCounts[make] = makeCounts[make] || { trim: 0, model: new Set() };
-    makeCounts[make].trim += 1;
-    makeCounts[make].model.add(row.model);
+  const trimCounts = {};
+  filtered.forEach(row => {
+    if (!row.make) return;
+    trimCounts[row.make] = (trimCounts[row.make] || 0) + 1;
   });
 
   const chartData = {
-    labels: Object.keys(makeCounts),
+    labels: Object.keys(trimCounts),
     datasets: [
       {
         label: "Trim Entries",
-        data: Object.values(makeCounts).map(m => m.trim),
-        backgroundColor: "#3B82F6"
+        data: Object.values(trimCounts),
+        backgroundColor: "#3b82f6",
       },
-      {
-        label: "Unique Models",
-        data: Object.values(makeCounts).map(m => m.model.size),
-        backgroundColor: "#10B981"
-      }
-    ]
+    ],
   };
 
   return (
-    <div className="min-h-screen bg-white text-black p-8">
-      <h1 className="text-3xl font-bold mb-4">Adacko Analytics</h1>
-      <div className="mb-6">
-        <label htmlFor="make" className="mr-2">Filter by Make</label>
-        <select
-          id="make"
-          value={makeFilter}
-          onChange={(e) => setMakeFilter(e.target.value)}
-          className="border rounded px-2 py-1"
-        >
-          <option value="All">All</option>
-          {makes.map(make => <option key={make}>{make}</option>)}
-        </select>
-      </div>
-      <div className="bg-white rounded-lg shadow p-4 mb-8">
+    <div style={{ padding: "2rem", fontFamily: "sans-serif", background: "#fff", color: "#000" }}>
+      <h1 style={{ fontSize: "2rem", marginBottom: "1rem" }}>Adacko Analytics</h1>
+      <label style={{ fontWeight: "bold", marginRight: "0.5rem" }}>Filter by Make:</label>
+      <select
+        value={make}
+        onChange={(e) => setMake(e.target.value)}
+        style={{ padding: "0.25rem", marginBottom: "1rem" }}
+      >
+        <option value="All">All</option>
+        {makes.map((m) => (
+          <option key={m}>{m}</option>
+        ))}
+      </select>
+
+      <div style={{ maxWidth: "1000px", marginBottom: "2rem" }}>
         <Bar data={chartData} />
       </div>
-      <h2 className="text-xl font-semibold mb-2">📄 Live Fitment Data Table</h2>
-      <div className="overflow-auto max-h-96 border rounded-lg">
-        <table className="min-w-full text-sm">
-          <thead className="bg-gray-100 sticky top-0">
+
+      <h2 style={{ fontSize: "1.25rem", marginBottom: "0.5rem" }}>Live Fitment Data</h2>
+      <div style={{ maxHeight: "400px", overflow: "auto", border: "1px solid #ccc" }}>
+        <table style={{ width: "100%", fontSize: "0.9rem", borderCollapse: "collapse" }}>
+          <thead style={{ background: "#f9f9f9", position: "sticky", top: 0 }}>
             <tr>
-              <th className="px-2 py-1 text-left">Year</th>
-              <th className="px-2 py-1 text-left">Make</th>
-              <th className="px-2 py-1 text-left">Model</th>
-              <th className="px-2 py-1 text-left">Trim</th>
-              <th className="px-2 py-1 text-left">Bolt Pattern</th>
-              <th className="px-2 py-1 text-left">Wheel Size (Front)</th>
+              <th style={{ padding: "6px", border: "1px solid #ddd" }}>Year</th>
+              <th style={{ padding: "6px", border: "1px solid #ddd" }}>Make</th>
+              <th style={{ padding: "6px", border: "1px solid #ddd" }}>Model</th>
+              <th style={{ padding: "6px", border: "1px solid #ddd" }}>Trim</th>
+              <th style={{ padding: "6px", border: "1px solid #ddd" }}>Bolt Pattern</th>
+              <th style={{ padding: "6px", border: "1px solid #ddd" }}>Wheel Size (Front)</th>
             </tr>
           </thead>
           <tbody>
-            {filteredData.slice(0, 100).map((row, idx) => (
-              <tr key={idx} className="even:bg-gray-50">
-                <td className="px-2 py-1">{row.year}</td>
-                <td className="px-2 py-1">{row.make}</td>
-                <td className="px-2 py-1">{row.model}</td>
-                <td className="px-2 py-1">{row.trim}</td>
-                <td className="px-2 py-1">{row.bolt_pattern}</td>
-                <td className="px-2 py-1">{row.wheel_size_front}</td>
+            {filtered.slice(0, 100).map((row, idx) => (
+              <tr key={idx}>
+                <td style={{ padding: "6px", border: "1px solid #ddd" }}>{row.year}</td>
+                <td style={{ padding: "6px", border: "1px solid #ddd" }}>{row.make}</td>
+                <td style={{ padding: "6px", border: "1px solid #ddd" }}>{row.model}</td>
+                <td style={{ padding: "6px", border: "1px solid #ddd" }}>{row.trim}</td>
+                <td style={{ padding: "6px", border: "1px solid #ddd" }}>{row.bolt_pattern}</td>
+                <td style={{ padding: "6px", border: "1px solid #ddd" }}>{row.wheel_size_front}</td>
               </tr>
             ))}
           </tbody>
